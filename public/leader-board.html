@@ -10,6 +10,7 @@
     <h1>Leader Board</h1>
 
     <div id="status"></div>
+    <div id="countdown"></div>
     <div id="lap"></div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -19,6 +20,7 @@
 
         socket.on("raceState", (data) => {
             document.getElementById("status").innerText = "Status: " + data.status;
+            document.getElementById("countdown").innerText = "Countdown: " + data.countdown;
             document.getElementById("lap").innerText = "Lap: " + data.currentLap + "/" + data.totalLaps;
         });
     </script>

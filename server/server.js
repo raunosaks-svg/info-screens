@@ -7,11 +7,15 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// static files
-app.use(express.static(path.join(__dirname, "../public"))); // Serve static files from the public directory
+
+// STATIC FILES
 
 
-// ROUTES
+app.use(express.static(path.join(__dirname, "../public")));
+
+
+// ROUTES (AUTOMAATNE)
+
 
 const screens = [
     "front-desk",
@@ -29,7 +33,9 @@ screens.forEach((screen) => {
     });
 });
 
-// SOCKET.IO
+
+// RACE STATE (projekti aju)
+
 
 let raceState = {
     status: "waiting", // waiting | countdown | racing | finished
@@ -37,28 +43,99 @@ let raceState = {
     leaderboard: [],
     countdown: 10,
     currentLap: 0,
-    totalLaps: 10,
+    totalLaps: 5,
     fastestLap: null
 };
+
+
+// COUNTDOWN + RACE LOGIC
+
+
+let countdownInterval = null;
+
+// Käivitab countdowni
+function startCountdown() {
+    if (countdownInterval) return; // ära käivita mitu korda
+
+    raceState.status = "countdown";
+    raceState.countdown = 10;
+
+    io.emit("raceState", raceState);
+
+    countdownInterval = setInterval(() => {
+        raceState.countdown--;
+
+        io.emit("raceState", raceState);
+
+        if (raceState.countdown <= 0) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+
+            startRace(); // automaatne start
+        }
+    }, 1000);
+}
+
+// Käivitab race'i
+function startRace() {
+    raceState.status = "racing";
+    raceState.currentLap = 0;
+
+    io.emit("raceState", raceState);
+
+    simulateRace();
+}
+
+// Simuleerib race'i
+function simulateRace() {
+    let raceInterval = setInterval(() => {
+
+        raceState.currentLap++;
+
+        io.emit("raceState", raceState);
+
+        // kui kõik ringid tehtud
+        if (raceState.currentLap >= raceState.totalLaps) {
+            clearInterval(raceInterval);
+            finishRace();
+        }
+
+    }, 3000);
+}
+
+// Lõpetab race'i
+function finishRace() {
+    raceState.status = "finished";
+
+    io.emit("raceState", raceState);
+}
+
+
+// SOCKET.IO
+
 
 io.on("connection", (socket) => {
     console.log("Client connected");
 
-    // saada kohe kogu race state
+    // saada state kohe kliendile
     socket.emit("raceState", raceState);
 
-    // update race state (nt race-control UI-st)
+    // manuaalne update (vajadusel)
     socket.on("updateRace", (data) => {
         raceState = { ...raceState, ...data };
-
-        // saada update kõigile
         io.emit("raceState", raceState);
+    });
+
+    //  KÄIVITA COUNTDOWN 
+    socket.on("startCountdown", () => {
+        startCountdown();
     });
 
     socket.on("disconnect", () => {
         console.log("Client disconnected");
     });
 });
+
 
 // SERVER START
 

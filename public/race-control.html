@@ -9,18 +9,15 @@
 
     <h1>Race Control</h1>
 
-    <button onclick="startRace()">Start Race</button>
+    <button onclick="startCountdown()">Start Countdown</button>
 
     <script src="/socket.io/socket.io.js"></script>
 
     <script>
         const socket = io();
 
-        function startRace() {
-            socket.emit("updateRace", {
-                status: "racing",
-                currentLap: 1
-            });
+        function startCountdown() {
+            socket.emit("startCountdown");
         }
     </script>
 
