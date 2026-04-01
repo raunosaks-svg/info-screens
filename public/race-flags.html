@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Race Flags</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            width: 100vw;
+        }
+    </style>
+</head>
+
+<body>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+        const socket = io();
+
+        socket.on("raceState", (data) => {
+
+            if (data.status === "racing") {
+                document.body.style.background = "green";
+            }
+            else if (data.status === "countdown") {
+                document.body.style.background = "yellow";
+            }
+
+            else if (data.status === "danger") {
+                document.body.style.background = "red";
+            }
+
+            else if (data.status === "finished") {
+                document.body.style.background = `
+                linear-gradient(45deg, black 25%, transparent 25%, transparent 75%, black 75%),
+                linear-gradient(45deg, black 25%, transparent 25%, transparent 75%, black 75%)`;
+                document.body.style.backgroundSize = "40px 40px";
+
+                document.body.style.backgroundPosition = "0 0, 20px 20px";
+            }
+
+            else {
+                document.body.style.background = "black";
+            }
+
+        });
+    </script>
+
+</body>
+
+</html>

@@ -38,7 +38,7 @@ screens.forEach((screen) => {
 
 
 let raceState = {
-    status: "waiting", // waiting | countdown | racing | finished
+    status: "racing", // waiting | countdown | racing | finished
     drivers: [],
     leaderboard: [],
     countdown: 10,
@@ -51,21 +51,21 @@ let raceState = {
 // COUNTDOWN + RACE LOGIC
 
 
-let countdownInterval = null;
+let countdownInterval = null; //salvestab timer, alguses väärtus null
 
 // Käivitab countdowni
-function startCountdown() {
+function startCountdown() { //käivitab countdown
     if (countdownInterval) return; // ära käivita mitu korda
 
-    raceState.status = "countdown";
-    raceState.countdown = 10;
+    raceState.status = "countdown";  //muudab staatuse, et oleme nüüd countdownis
+    raceState.countdown = 10; //algab 10st sekundist
 
-    io.emit("raceState", raceState);
+    io.emit("raceState", raceState); //saadab staatuse kõigile ekraanidele
 
-    countdownInterval = setInterval(() => {
-        raceState.countdown--;
+    countdownInterval = setInterval(() => { //käivitab timeri, mis teeb midagi iga sekundi tagant
+        raceState.countdown--; //iga sekund vähendab 
 
-        io.emit("raceState", raceState);
+        io.emit("raceState", raceState); //ja saadab staatuse kõigile ekraanidele
 
         if (raceState.countdown <= 0) {
             clearInterval(countdownInterval);
@@ -90,7 +90,7 @@ function startRace() {
 function simulateRace() {
     let raceInterval = setInterval(() => {
 
-        raceState.currentLap++;
+        raceState.currentLap++; //lisab ühe ringi juurde
 
         io.emit("raceState", raceState);
 
@@ -114,7 +114,7 @@ function finishRace() {
 // SOCKET.IO
 
 
-io.on("connection", (socket) => {
+io.on("connection", (socket) => { //kui keegi avab lehe, annab teada
     console.log("Client connected");
 
     // saada state kohe kliendile
@@ -126,7 +126,7 @@ io.on("connection", (socket) => {
         io.emit("raceState", raceState);
     });
 
-    //  KÄIVITA COUNTDOWN 
+    //  KÄIVITA COUNTDOWN s
     socket.on("startCountdown", () => {
         startCountdown();
     });

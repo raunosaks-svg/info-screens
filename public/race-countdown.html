@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Race Countdown</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: black;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        #countdown {
+            font-size: 120px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="countdown">Waiting</div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        socket.on("raceState", (data) => {
+            const countdownElement = document.getElementById("countdown");
+
+            if (data.status === "waiting") {
+                countdownElement.innerText = "Waiting";
+            } else if (data.status === "countdown") {
+                countdownElement.innerText = data.countdown;
+            } else if (data.status === "racing") {
+                countdownElement.innerText = "GO!";
+            } else if (data.status === "finished") {
+                countdownElement.innerText = "Finished";
+            }
+        });
+    </script>
+</body>
+
+</html>
