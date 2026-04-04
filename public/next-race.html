@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Next Race</title>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #111;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .screen {
+            width: 80%;
+            max-width: 800px;
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 30px;
+            box-sizing: border-box;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        h1 {
+            margin-top: 0;
+            text-align: center;
+            font-size: 42px;
+        }
+
+        .item {
+            font-size: 28px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0 0 0;
+        }
+
+        li {
+            font-size: 24px;
+            margin: 10px 0;
+            padding: 12px;
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="screen">
+        <h1>Next Race</h1>
+
+        <div class="item" id="status">Status: waiting</div>
+        <div class="item" id="message">Waiting for next race</div>
+
+        <h2>Drivers</h2>
+        <ul id="driversList">
+            <li>No drivers assigned yet</li>
+        </ul>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        socket.on("raceState", (data) => {
+            const statusElement = document.getElementById("status");
+            const messageElement = document.getElementById("message");
+            const driversList = document.getElementById("driversList");
+
+            let statusText = "";
+            let messageText = "";
+
+            if (data.status === "waiting") {
+                statusText = "Waiting for race";
+                messageText = "Drivers will be announced soon";
+            } else if (data.status === "countdown") {
+                statusText = "Race starting soon";
+                messageText = "Please prepare for the race";
+            } else if (data.status === "racing") {
+                statusText = "Race in progress";
+                messageText = "Current race is underway";
+            } else if (data.status === "finished") {
+                statusText = "Race finished";
+                messageText = "Please proceed to the paddock";
+            } else {
+                statusText = data.status;
+                messageText = "Waiting for update";
+            }
+
+            statusElement.innerText = "Status: " + statusText;
+            messageElement.innerText = messageText;
+
+            driversList.innerHTML = "";
+
+            if (data.drivers && data.drivers.length > 0) {
+                data.drivers.forEach((driver) => {
+                    const li = document.createElement("li");
+                    li.innerText = driver;
+                    driversList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement("li");
+                li.innerText = "No drivers assigned yet";
+                driversList.appendChild(li);
+            }
+        });
+    </script>
+</body>
+
+</html>

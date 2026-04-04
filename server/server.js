@@ -38,7 +38,7 @@ screens.forEach((screen) => {
 
 
 let raceState = {
-    status: "racing", // waiting | countdown | racing | finished
+    status: "finished", // waiting | countdown | racing | finished
     drivers: [],
     leaderboard: [],
     countdown: 10,
