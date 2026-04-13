@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Lap Line Tracker</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #111;
+            color: white;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding: 20px;
+        }
+
+        button {
+            height: 120px;
+            font-size: 40px;
+            border: none;
+            border-radius: 10px;
+        }
+
+        .disabled {
+            background: #555 !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Lap Tracker</h1>
+
+    <div class="grid" id="buttons"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        let currentState = null;
+
+        socket.on("raceState", (data) => {
+            currentState = data;
+            renderButtons();
+        });
+
+        function renderButtons() {
+            const container = document.getElementById("buttons");
+            container.innerHTML = "";
+
+            if (!currentState.drivers) return;
+
+            currentState.drivers.forEach((driver, index) => {
+                const btn = document.createElement("button");
+
+                btn.innerText = index + 1;
+
+                if (currentState.status === "finished") {
+                    btn.classList.add("disabled");
+                    btn.disabled = true;
+                } else {
+                    btn.onclick = () => lapCrossed(index);
+                }
+
+                container.appendChild(btn);
+            });
+        }
+
+        function lapCrossed(carIndex) {
+            if (currentState.status !== "racing") return;
+
+            socket.emit("updateRace", {
+                currentLap: currentState.currentLap + 1
+            });
+        }
+    </script>
+
+</body>
+
+</html>

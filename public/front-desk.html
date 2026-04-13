@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Front Desk</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #111;
+            color: white;
+            padding: 20px;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            background: #222;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Front Desk</h1>
+
+    <input id="driverName" placeholder="Driver name" />
+    <button onclick="addDriver()">Add</button>
+
+    <ul id="driverList"></ul>
+
+    <button onclick="sendToServer()">Save Race</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        let drivers = [];
+
+        function addDriver() {
+            const input = document.getElementById("driverName");
+            const name = input.value.trim();
+
+            if (!name) return;
+
+            drivers.push(name);
+            input.value = "";
+            render();
+        }
+
+        function removeDriver(index) {
+            drivers.splice(index, 1);
+            render();
+        }
+
+        function render() {
+            const list = document.getElementById("driverList");
+            list.innerHTML = "";
+
+            drivers.forEach((d, i) => {
+                const li = document.createElement("li");
+
+                li.innerHTML = `
+                ${d}
+                <button onclick="removeDriver(${i})">X</button>
+            `;
+
+                list.appendChild(li);
+            });
+        }
+
+        function sendToServer() {
+            socket.emit("updateRace", {
+                drivers: drivers
+            });
+        }
+    </script>
+
+</body>
+
+</html>
