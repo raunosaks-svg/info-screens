@@ -1,104 +1,168 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>Race Control</title>
-    <style>
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: #111;
-            color: white;
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .panel {
-            width: 80%;
-            max-width: 600px;
-            background: #1e1e1e;
-            border-radius: 12px;
-            padding: 30px;
-            box-sizing: border-box;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-            text-align: center;
-        }
-
-        h1 {
-            margin-top: 0;
-            margin-bottom: 30px;
-            font-size: 40px;
-        }
-
-        .buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        button {
-            padding: 18px;
-            font-size: 24px;
-            font-weight: bold;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-        }
-
-        #startButton {
-            background: #ffd54f;
-        }
-
-        #racingButton {
-            background: #4caf50;
-            color: white;
-        }
-
-        #finishButton {
-            background: #f44336;
-            color: white;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Race Control - Beachside Racetrack</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
-    <div class="panel">
-        <h1>Race Control</h1>
-
-        <div class="buttons">
-            <button id="startButton">Start Countdown</button>
-            <button id="racingButton">Set Racing</button>
-            <button id="finishButton">Finish Race</button>
+    <div class="container">
+        <div id="auth-screen" class="auth-screen">
+            <h1>Race Control Access</h1>
+            <input type="password" id="access-key" placeholder="Enter access key" class="key-input">
+            <button onclick="authenticate()" class="btn btn-primary">Access Race Control</button>
+            <div id="auth-error" class="error-message"></div>
+        </div>
+        
+        <div id="main-screen" class="main-screen hidden">
+            <h1>Race Control</h1>
+            
+            <div id="pre-race" class="section">
+                <h2>Upcoming Race</h2>
+                <div id="next-race-info"></div>
+                <button onclick="startRace()" class="btn btn-success btn-large">Start Race</button>
+            </div>
+            
+            <div id="active-race" class="section hidden">
+                <h2>Active Race</h2>
+                <div class="timer-display">
+                    <h3>Time Remaining</h3>
+                    <div id="timer" class="timer">10:00</div>
+                </div>
+                
+                <div class="mode-controls">
+                    <h3>Race Mode</h3>
+                    <div class="button-group">
+                        <button onclick="setMode('safe')" class="btn mode-btn safe">Safe</button>
+                        <button onclick="setMode('hazard')" class="btn mode-btn hazard">Hazard</button>
+                        <button onclick="setMode('danger')" class="btn mode-btn danger">Danger</button>
+                    </div>
+                    <div id="current-mode" class="mode-indicator">Current: Safe</div>
+                </div>
+                
+                <button onclick="endSession()" class="btn btn-warning" id="end-session-btn" disabled>End Session</button>
+            </div>
+            
+            <div id="drivers-list" class="section">
+                <h3>Drivers</h3>
+                <div id="drivers"></div>
+            </div>
         </div>
     </div>
-
+    
     <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
     <script>
-        const socket = io();
-
-        const startButton = document.getElementById("startButton");
-        const finishButton = document.getElementById("finishButton");
-        const racingButton = document.getElementById("racingButton");
-
-        startButton.addEventListener("click", () => {
-            socket.emit("startCountdown");
-        });
-
-        finishButton.addEventListener("click", () => {
-            socket.emit("updateRace", { status: "finished" });
-        });
-
-        racingButton.addEventListener("click", () => {
-            socket.emit("updateRace", { status: "racing" });
-        });
+        let socket;
+        let currentMode = 'danger';
+        let raceFinished = false;
+        
+        function authenticate() {
+            const key = document.getElementById('access-key').value;
+            socket = io();
+            
+            socket.emit('authenticate', { role: 'safety', key });
+            
+            socket.on('authenticated', (response) => {
+                if (response.success) {
+                    document.getElementById('auth-screen').classList.add('hidden');
+                    document.getElementById('main-screen').classList.remove('hidden');
+                    setupRaceControl();
+                } else {
+                    document.getElementById('auth-error').textContent = response.error;
+                }
+            });
+        }
+        
+        function setupRaceControl() {
+            socket.on('current-race', (race) => {
+                if (race) {
+                    displayDrivers(race.drivers);
+                    document.getElementById('next-race-info').innerHTML = `
+                        <h3>${race.name}</h3>
+                        <p>${race.drivers.length} drivers registered</p>
+                    `;
+                }
+            });
+            
+            socket.on('race-status', (status) => {
+                currentMode = status.mode;
+                raceFinished = status.ended || status.mode === 'finish';
+                updateUI(status);
+            });
+            
+            socket.on('race-started', (race) => {
+                document.getElementById('pre-race').classList.add('hidden');
+                document.getElementById('active-race').classList.remove('hidden');
+                displayDrivers(race.drivers);
+            });
+            
+            socket.on('timer-update', (timer) => {
+                const minutes = Math.floor(timer.remaining / 60);
+                const seconds = timer.remaining % 60;
+                document.getElementById('timer').textContent = 
+                    `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            });
+            
+            socket.on('race-mode-changed', (data) => {
+                currentMode = data.mode;
+                document.getElementById('current-mode').textContent = `Current: ${data.mode}`;
+                
+                if (data.mode === 'finish') {
+                    raceFinished = true;
+                    document.getElementById('end-session-btn').disabled = false;
+                }
+            });
+            
+            socket.on('next-race-ready', (race) => {
+                document.getElementById('active-race').classList.add('hidden');
+                document.getElementById('pre-race').classList.remove('hidden');
+                document.getElementById('next-race-info').innerHTML = `
+                    <h3>${race.name}</h3>
+                    <p>${race.drivers.length} drivers registered</p>
+                `;
+                displayDrivers(race.drivers);
+            });
+        }
+        
+        function startRace() {
+            socket.emit('start-race');
+        }
+        
+        function setMode(mode) {
+            if (!raceFinished) {
+                socket.emit('change-race-mode', mode);
+            }
+        }
+        
+        function endSession() {
+            if (raceFinished) {
+                socket.emit('end-session');
+            }
+        }
+        
+        function displayDrivers(drivers) {
+            const driversDiv = document.getElementById('drivers');
+            driversDiv.innerHTML = drivers.map(d => `
+                <div class="driver-card">
+                    <span class="car-number">#${d.carNumber}</span>
+                    <span class="driver-name">${d.name}</span>
+                </div>
+            `).join('');
+        }
+        
+        function updateUI(status) {
+            const endSessionBtn = document.getElementById('end-session-btn');
+            
+            if (status.mode === 'finish') {
+                endSessionBtn.disabled = false;
+            }
+            
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.disabled = raceFinished || status.mode === 'finish';
+            });
+        }
     </script>
-
 </body>
-
 </html>

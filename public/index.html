@@ -1,24 +1,32 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>Racetrack System</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beachside Racetrack - Interface Selection</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
-
-    <h1>Racetrack system running</h1>
-
-    <script src="/socket.io/socket.io.js"></script>
-
-    <script>
-        const socket = io();
-
-        socket.on("connect", () => {
-            console.log("Connected to server");
-        });
-    </script>
-
+    <div class="container">
+        <h1>🏁 Beachside Racetrack</h1>
+        <h2>Interface Selection</h2>
+        
+        <div class="interface-grid">
+            <div class="category">
+                <h3>👔 Employee Interfaces</h3>
+                <a href="/front-desk" class="btn">📋 Front Desk</a>
+                <a href="/race-control" class="btn">🚦 Race Control</a>
+                <a href="/lap-line-tracker" class="btn">⏱️ Lap-line Tracker</a>
+            </div>
+            
+            <div class="category">
+                <h3>👀 Public Displays</h3>
+                <a href="/leader-board" class="btn">🏆 Leader Board</a>
+                <a href="/next-race" class="btn">📢 Next Race</a>
+                <a href="/race-countdown" class="btn">⏰ Race Countdown</a>
+                <a href="/race-flags" class="btn">🚩 Race Flags</a>
+            </div>
+        </div>
+    </div>
 </body>
-
 </html>

@@ -1,95 +1,204 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>Front Desk</title>
-    <style>
-        body {
-            font-family: Arial;
-            background: #111;
-            color: white;
-            padding: 20px;
-        }
-
-        input,
-        button {
-            padding: 10px;
-            margin: 5px;
-            font-size: 16px;
-        }
-
-        ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        li {
-            background: #222;
-            margin: 5px 0;
-            padding: 10px;
-            border-radius: 6px;
-            display: flex;
-            justify-content: space-between;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Front Desk - Beachside Racetrack</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
-
-    <h1>Front Desk</h1>
-
-    <input id="driverName" placeholder="Driver name" />
-    <button onclick="addDriver()">Add</button>
-
-    <ul id="driverList"></ul>
-
-    <button onclick="sendToServer()">Save Race</button>
-
+    <div class="container front-desk-container">
+        <!-- AUTENTIMISE EKRAAN -->
+        <div id="auth-screen" class="auth-screen">
+            <h1>🏁 Beachside Racetrack</h1>
+            <h2>Front Desk Access</h2>
+            <input type="password" id="access-key" placeholder="Enter access key" class="key-input">
+            <button onclick="authenticate()" class="btn btn-primary">Access Front Desk</button>
+            <div id="auth-error" class="error-message"></div>
+        </div>
+        
+        <!-- PEAMINE EKRAAN -->
+        <div id="main-screen" class="main-screen hidden">
+            <!-- NAVIGATSIOONIRIBA -->
+            <div class="nav-bar">
+                <div class="nav-title">🏁 Front Desk - Race Configuration</div>
+                <div class="nav-buttons">
+                    <button onclick="goBack()" class="nav-btn nav-btn-back">← Back to Main</button>
+                    <button class="nav-btn nav-btn-prev" disabled style="opacity: 0.5; cursor: default;">—</button>
+                    <a href="/race-control" class="nav-btn nav-btn-next">Race Control →</a>
+                </div>
+            </div>
+            
+            <!-- UUE SESSIOONI LOOMINE -->
+            <div class="create-session-form">
+                <h2>➕ Create New Race Session</h2>
+                <form id="create-session-form">
+                    <div class="form-group">
+                        <label for="session-name">Session Name</label>
+                        <input type="text" id="session-name" placeholder="e.g., Morning Qualifying, Afternoon Race" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="driver-names">Driver Names</label>
+                        <textarea id="driver-names" placeholder="Enter driver names separated by commas&#10;Example: John Doe, Jane Smith, Bob Johnson" required></textarea>
+                        <div class="hint-text">Maximum 8 drivers per session</div>
+                    </div>
+                    
+                    <button type="submit" class="create-session-btn">✨ Create Session</button>
+                </form>
+            </div>
+            
+            <!-- SESSIOONIDE NIMEKIRI -->
+            <div class="sessions-header">
+                <h2>📋 Upcoming Race Sessions</h2>
+                <span id="session-count" class="session-count">0</span>
+            </div>
+            
+            <div id="sessions-list" class="sessions-list">
+                <div class="empty-state">
+                    No race sessions created yet.<br>
+                    Use the form above to create your first session.
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
-
-        let drivers = [];
-
-        function addDriver() {
-            const input = document.getElementById("driverName");
-            const name = input.value.trim();
-
-            if (!name) return;
-
-            drivers.push(name);
-            input.value = "";
-            render();
-        }
-
-        function removeDriver(index) {
-            drivers.splice(index, 1);
-            render();
-        }
-
-        function render() {
-            const list = document.getElementById("driverList");
-            list.innerHTML = "";
-
-            drivers.forEach((d, i) => {
-                const li = document.createElement("li");
-
-                li.innerHTML = `
-                ${d}
-                <button onclick="removeDriver(${i})">X</button>
-            `;
-
-                list.appendChild(li);
+        let socket;
+        let currentSessions = [];
+        
+        function authenticate() {
+            const key = document.getElementById('access-key').value;
+            socket = io();
+            
+            socket.emit('authenticate', { role: 'receptionist', key });
+            
+            socket.on('authenticated', (response) => {
+                if (response.success) {
+                    document.getElementById('auth-screen').classList.add('hidden');
+                    document.getElementById('main-screen').classList.remove('hidden');
+                    setupFrontDesk();
+                } else {
+                    document.getElementById('auth-error').textContent = response.error;
+                }
             });
         }
-
-        function sendToServer() {
-            socket.emit("updateRace", {
-                drivers: drivers
+        
+        function setupFrontDesk() {
+            const form = document.getElementById('create-session-form');
+            
+            socket.on('race-sessions', (sessions) => {
+                currentSessions = sessions || [];
+                displaySessions(currentSessions);
             });
+            
+            socket.on('race-sessions-updated', (sessions) => {
+                currentSessions = sessions || [];
+                displaySessions(currentSessions);
+            });
+            
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = document.getElementById('session-name').value.trim();
+                const driverNamesInput = document.getElementById('driver-names').value.trim();
+                
+                if (!name || !driverNamesInput) {
+                    alert('Please fill in all fields');
+                    return;
+                }
+                
+                const driverNames = driverNamesInput.split(',').map(n => n.trim()).filter(n => n.length > 0).slice(0, 8);
+                
+                if (driverNames.length === 0) {
+                    alert('Please enter at least one driver name');
+                    return;
+                }
+                
+                socket.emit('create-race-session', {
+                    name: name,
+                    time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                    drivers: driverNames.map(name => ({ name, id: Date.now() + Math.random() }))
+                });
+                
+                form.reset();
+                showNotification(`Session "${name}" created with ${driverNames.length} drivers`, 'success');
+            });
+        }
+        
+        function displaySessions(sessions) {
+            const sessionsList = document.getElementById('sessions-list');
+            const sessionCount = document.getElementById('session-count');
+            
+            sessionCount.textContent = sessions.length;
+            
+            if (sessions.length === 0) {
+                sessionsList.innerHTML = `<div class="empty-state">No race sessions created yet.<br>Use the form above to create your first session.</div>`;
+                return;
+            }
+            
+            sessionsList.innerHTML = sessions.map(session => `
+                <div class="session-card">
+                    <div class="session-header">
+                        <h3 class="session-name">${session.name}</h3>
+                        <span class="session-time">🕐 ${session.time}</span>
+                    </div>
+                    
+                    <div class="drivers-info">
+                        <div class="drivers-count">🏎️ ${session.drivers.length} / 8 Drivers Registered</div>
+                        <div class="drivers-list">
+                            ${session.drivers.map(driver => `
+                                <div class="driver-item">
+                                    <span class="car-badge">#${driver.carNumber}</span>
+                                    <span>${driver.name}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div class="session-actions">
+                        <button onclick="editSession('${session.id}')" class="btn btn-outline">✏️ Edit</button>
+                        <button onclick="deleteSession('${session.id}')" class="btn btn-danger">🗑️ Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function editSession(sessionId) {
+            const session = currentSessions.find(s => s.id === sessionId);
+            if (!session) return;
+            
+            const newName = prompt('Enter new session name:', session.name);
+            if (newName && newName.trim()) {
+                const driverNames = prompt('Enter driver names (comma-separated):', session.drivers.map(d => d.name).join(', '));
+                
+                if (driverNames && driverNames.trim()) {
+                    const drivers = driverNames.split(',').map(n => n.trim()).filter(n => n.length > 0).slice(0, 8).map(name => ({ name, id: Date.now() + Math.random() }));
+                    
+                    socket.emit('update-race-session', { sessionId, name: newName.trim(), drivers: drivers });
+                    showNotification('Session updated successfully', 'success');
+                }
+            }
+        }
+        
+        function deleteSession(sessionId) {
+            if (confirm('Are you sure you want to delete this session?')) {
+                socket.emit('delete-race-session', sessionId);
+                showNotification('Session deleted', 'info');
+            }
+        }
+        
+        function goBack() {
+            window.location.href = '/';
+        }
+        
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
         }
     </script>
-
 </body>
-
 </html>

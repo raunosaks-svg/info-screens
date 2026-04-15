@@ -1,53 +1,98 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>Race Flags</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Race Flags - Beachside Racetrack</title>
+    <link rel="stylesheet" href="styles.css">
     <style>
         body {
             margin: 0;
-            height: 100vh;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        .flag-display {
             width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s;
+        }
+        
+        .flag-green {
+            background: linear-gradient(135deg, #00ff00 0%, #008000 100%);
+        }
+        
+        .flag-yellow {
+            background: linear-gradient(135deg, #ffff00 0%, #ff8c00 100%);
+        }
+        
+        .flag-red {
+            background: linear-gradient(135deg, #ff0000 0%, #8b0000 100%);
+        }
+        
+        .flag-checkered {
+            background: repeating-linear-gradient(
+                45deg,
+                #000 0px,
+                #000 50px,
+                #fff 50px,
+                #fff 100px
+            );
+        }
+        
+        .flag-text {
+            font-size: 8em;
+            font-weight: bold;
+            text-shadow: 4px 4px 8px rgba(0,0,0,0.5);
+            color: white;
+            text-align: center;
+        }
+        
+        .flag-checkered .flag-text {
+            color: black;
+            text-shadow: 4px 4px 8px rgba(255,255,255,0.5);
+            background: rgba(255,255,255,0.8);
+            padding: 20px;
+            border-radius: 10px;
         }
     </style>
 </head>
-
 <body>
-
+    <div id="flag-display" class="flag-display flag-red">
+        <div class="flag-text">STOP</div>
+    </div>
+    
     <script src="/socket.io/socket.io.js"></script>
-
     <script>
         const socket = io();
-
-        socket.on("raceState", (data) => {
-
-            if (data.status === "racing") {
-                document.body.style.background = "green";
+        socket.emit('public-connect');
+        
+        const flagDisplay = document.getElementById('flag-display');
+        const flagText = document.querySelector('.flag-text');
+        
+        const modeConfig = {
+            'safe': { class: 'flag-green', text: 'GO' },
+            'hazard': { class: 'flag-yellow', text: 'CAUTION' },
+            'danger': { class: 'flag-red', text: 'STOP' },
+            'finish': { class: 'flag-checkered', text: 'FINISH' }
+        };
+        
+        socket.on('race-mode-changed', (data) => {
+            const config = modeConfig[data.mode] || modeConfig.danger;
+            
+            flagDisplay.className = 'flag-display ' + config.class;
+            flagText.textContent = config.text;
+        });
+        
+        // Fullscreen on load for flag displays
+        window.addEventListener('load', () => {
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
             }
-            else if (data.status === "countdown") {
-                document.body.style.background = "yellow";
-            }
-
-            else if (data.status === "danger") {
-                document.body.style.background = "red";
-            }
-
-            else if (data.status === "finished") {
-                document.body.style.background = `
-                linear-gradient(45deg, black 25%, transparent 25%, transparent 75%, black 75%),
-                linear-gradient(45deg, black 25%, transparent 25%, transparent 75%, black 75%)`;
-                document.body.style.backgroundSize = "40px 40px";
-
-                document.body.style.backgroundPosition = "0 0, 20px 20px";
-            }
-
-            else {
-                document.body.style.background = "black";
-            }
-
         });
     </script>
-
 </body>
-
 </html>

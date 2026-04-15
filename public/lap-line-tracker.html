@@ -1,88 +1,212 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>Lap Line Tracker</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lap-line Tracker - Beachside Racetrack</title>
+    <link rel="stylesheet" href="styles.css">
     <style>
-        body {
-            margin: 0;
-            font-family: Arial;
-            background: #111;
-            color: white;
-        }
-
-        h1 {
-            text-align: center;
-        }
-
-        .grid {
+        .lap-buttons {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
             padding: 20px;
         }
-
-        button {
-            height: 120px;
-            font-size: 40px;
+        
+        .lap-btn {
+            aspect-ratio: 1;
+            font-size: 4em;
+            font-weight: bold;
             border: none;
-            border-radius: 10px;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s;
+            min-height: 150px;
         }
-
-        .disabled {
-            background: #555 !important;
+        
+        .lap-btn:hover {
+            transform: scale(0.95);
+        }
+        
+        .lap-btn:active {
+            transform: scale(0.9);
+        }
+        
+        .lap-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        @media (orientation: portrait) {
+            .lap-buttons {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        .status-message {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        
+        .feedback {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .feedback.show {
+            opacity: 1;
         }
     </style>
 </head>
-
 <body>
-
-    <h1>Lap Tracker</h1>
-
-    <div class="grid" id="buttons"></div>
-
+    <div class="container">
+        <div id="auth-screen" class="auth-screen">
+            <h1>Lap-line Tracker Access</h1>
+            <input type="password" id="access-key" placeholder="Enter access key" class="key-input">
+            <button onclick="authenticate()" class="btn btn-primary">Access Tracker</button>
+            <div id="auth-error" class="error-message"></div>
+        </div>
+        
+        <div id="main-screen" class="main-screen hidden">
+            <h1>Lap-line Tracker</h1>
+            
+            <div id="status" class="status-message">Waiting for race to start...</div>
+            
+            <div id="lap-buttons" class="lap-buttons"></div>
+            
+            <div id="feedback" class="feedback"></div>
+        </div>
+    </div>
+    
     <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
     <script>
-        const socket = io();
-
-        let currentState = null;
-
-        socket.on("raceState", (data) => {
-            currentState = data;
-            renderButtons();
-        });
-
-        function renderButtons() {
-            const container = document.getElementById("buttons");
-            container.innerHTML = "";
-
-            if (!currentState.drivers) return;
-
-            currentState.drivers.forEach((driver, index) => {
-                const btn = document.createElement("button");
-
-                btn.innerText = index + 1;
-
-                if (currentState.status === "finished") {
-                    btn.classList.add("disabled");
-                    btn.disabled = true;
+        let socket;
+        let raceActive = false;
+        let raceEnded = false;
+        
+        function authenticate() {
+            const key = document.getElementById('access-key').value;
+            socket = io();
+            
+            socket.emit('authenticate', { role: 'observer', key });
+            
+            socket.on('authenticated', (response) => {
+                if (response.success) {
+                    document.getElementById('auth-screen').classList.add('hidden');
+                    document.getElementById('main-screen').classList.remove('hidden');
+                    setupLapTracker();
                 } else {
-                    btn.onclick = () => lapCrossed(index);
+                    document.getElementById('auth-error').textContent = response.error;
                 }
-
-                container.appendChild(btn);
             });
         }
-
-        function lapCrossed(carIndex) {
-            if (currentState.status !== "racing") return;
-
-            socket.emit("updateRace", {
-                currentLap: currentState.currentLap + 1
+        
+        function setupLapTracker() {
+            socket.on('current-race-drivers', (drivers) => {
+                createLapButtons(drivers);
             });
+            
+            socket.on('race-status', (status) => {
+                raceEnded = status.ended;
+                updateStatus(status);
+            });
+            
+            socket.on('race-started', (race) => {
+                raceActive = true;
+                raceEnded = false;
+                createLapButtons(race.drivers);
+                document.getElementById('status').textContent = 'Race Active - Tap buttons as cars cross the line';
+            });
+            
+            socket.on('race-finished', () => {
+                raceActive = false;
+                document.getElementById('status').textContent = 'Race Finished - Continue recording laps until session ends';
+            });
+            
+            socket.on('session-ended', () => {
+                raceActive = false;
+                raceEnded = true;
+                document.getElementById('status').textContent = 'Session Ended - Lap recording disabled';
+                disableAllButtons();
+            });
+            
+            socket.on('lap-recorded', (data) => {
+                showFeedback(`Car #${data.carNumber} - Lap: ${data.lapTime}s`);
+            });
+            
+            socket.on('leaderboard-update', (drivers) => {
+                // Update any display if needed
+            });
+        }
+        
+        function createLapButtons(drivers) {
+            const container = document.getElementById('lap-buttons');
+            container.innerHTML = '';
+            
+            drivers.forEach(driver => {
+                const button = document.createElement('button');
+                button.className = 'lap-btn';
+                button.textContent = driver.carNumber;
+                button.onclick = () => recordLap(driver.carNumber);
+                
+                if (!raceActive || raceEnded) {
+                    button.classList.add('disabled');
+                }
+                
+                container.appendChild(button);
+            });
+        }
+        
+        function recordLap(carNumber) {
+            if (!raceActive || raceEnded) {
+                showFeedback('Cannot record lap - Race not active', true);
+                return;
+            }
+            
+            socket.emit('record-lap', { carNumber });
+        }
+        
+        function disableAllButtons() {
+            document.querySelectorAll('.lap-btn').forEach(btn => {
+                btn.classList.add('disabled');
+            });
+        }
+        
+        function updateStatus(status) {
+            if (status.mode === 'finish') {
+                document.getElementById('status').textContent = 'Race Finished - Continue recording laps';
+            }
+            
+            if (status.ended) {
+                disableAllButtons();
+                document.getElementById('status').textContent = 'Session Ended - Lap recording disabled';
+            }
+        }
+        
+        function showFeedback(message, isError = false) {
+            const feedback = document.getElementById('feedback');
+            feedback.textContent = message;
+            feedback.style.background = isError ? 'rgba(220, 53, 69, 0.9)' : 'rgba(40, 167, 69, 0.9)';
+            feedback.classList.add('show');
+            
+            setTimeout(() => {
+                feedback.classList.remove('show');
+            }, 1000);
         }
     </script>
-
 </body>
-
 </html>

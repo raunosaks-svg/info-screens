@@ -1,19 +1,14 @@
 {
   "name": "racetrack-system",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Real-time racetrack management system",
+  "main": "server.js",
   "scripts": {
-    "start": "node server/server.js",
-    "dev": "node server/server.js"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "dotenv": "^17.3.1",
-    "express": "^5.2.1",
-    "socket.io": "^4.8.3"
+    "express": "^4.18.2",
+    "socket.io": "^4.5.4"
   }
 }
