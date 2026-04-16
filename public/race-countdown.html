@@ -1,448 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="et">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Race Countdown - Beachside Racetrack</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Race Countdown</title>
+
     <style>
-        /* Additional styles specific to the countdown display */
-        .countdown-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .race-status {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            background: rgba(0, 0, 0, 0.6);
-            display: inline-block;
-            padding: 8px 24px;
-            border-radius: 40px;
+        body {
+            margin: 0;
+            background: black;
             color: white;
-        }
-
-        .countdown-timer {
-            font-size: 8rem;
-            font-weight: 800;
-            font-family: 'Courier New', monospace;
-            background: rgba(0, 0, 0, 0.7);
-            display: inline-block;
-            padding: 30px 60px;
-            border-radius: 30px;
-            margin: 20px 0;
-            letter-spacing: 8px;
-            color: #facc15;
-            text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .flag-indicator {
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin: 20px 0;
-            padding: 12px;
-            border-radius: 60px;
-            display: inline-block;
-            min-width: 200px;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(4px);
-        }
-
-        .flag-safe {
-            background: #22c55e;
-            color: white;
-        }
-
-        .flag-hazard {
-            background: #f59e0b;
-            color: #1f2937;
-        }
-
-        .flag-danger {
-            background: #ef4444;
-            color: white;
-        }
-
-        .flag-finish {
-            background: repeating-linear-gradient(45deg, #000, #000 20px, #fff 20px, #fff 40px);
-            color: black;
-            text-shadow: none;
-        }
-
-        .race-info-detail {
-            font-size: 1.5rem;
-            margin: 15px 0;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.6);
-            border-radius: 20px;
-            display: inline-block;
-        }
-
-        .drivers-section {
-            margin-top: 40px;
-            background: rgba(255, 255, 255, 0.5);
-            backdrop-filter: blur(8px);
-            border-radius: 20px;
-            padding: 20px;
-            text-align: left;
-        }
-
-        .drivers-section h3 {
-            text-align: center;
-            font-size: 1.8rem;
-            margin-bottom: 20px;
-            color: #1e293b;
-        }
-
-        .driver-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 1.2rem;
-        }
-
-        .driver-table th,
-        .driver-table td {
-            padding: 12px 8px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            font-family: Arial;
             text-align: center;
         }
 
-        .driver-table th {
-            background: rgba(0, 0, 0, 0.1);
-            font-weight: 600;
+        h1 {
+            margin-top: 20px;
         }
 
-        .car-number-cell {
-            font-weight: bold;
-            color: #c2410c;
-            font-size: 1.3rem;
-        }
-
-        .fastest-lap {
-            font-family: monospace;
-            font-weight: bold;
-            color: #16a34a;
-        }
-
-        .current-lap {
-            font-family: monospace;
-        }
-
-        @media (max-width: 768px) {
-            .countdown-timer {
-                font-size: 4rem;
-                padding: 20px 30px;
-                letter-spacing: 4px;
-            }
-
-            .race-status {
-                font-size: 1.2rem;
-            }
-
-            .driver-table {
-                font-size: 0.9rem;
-            }
-
-            .driver-table th,
-            .driver-table td {
-                padding: 8px 4px;
-            }
-        }
-
-        .empty-message {
-            text-align: center;
-            padding: 40px;
-            font-size: 1.5rem;
-            color: #475569;
+        .time {
+            font-size: 120px;
+            margin-top: 50px;
         }
     </style>
 </head>
 
 <body>
-    <div class="public-display">
-        <button onclick="toggleFullscreen()" class="fullscreen-btn">⛶ Fullscreen</button>
 
-        <div class="countdown-container">
-            <div id="raceStatus" class="race-status">🏁 WAITING FOR RACE</div>
-            <div id="countdownTimer" class="countdown-timer">--:--</div>
-            <div id="flagIndicator" class="flag-indicator">⚫ NO FLAG</div>
-            <div id="raceInfoDetail" class="race-info-detail"></div>
+    <h1>⏱ Countdown</h1>
 
-            <div class="drivers-section">
-                <h3>🏎️ DRIVER STANDINGS & LAP INFO</h3>
-                <div id="driversList">
-                    <div class="empty-message">No race data available yet</div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div id="time" class="time">--</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
+
         const socket = io();
-        let currentRaceActive = false;
-        let raceFinishedFlag = false;
-        let currentMode = 'danger';
 
-        // Connect as public client
-        socket.emit('public-connect');
+        socket.on("state", (state) => {
 
-        // Helper: format seconds to MM:SS
-        function formatTime(seconds) {
-            if (seconds === undefined || seconds === null) return '--:--';
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-        }
+            document.getElementById("time").textContent = state.timer;
 
-        // Update the countdown timer display
-        function updateTimerDisplay(remainingSeconds) {
-            const timerEl = document.getElementById('countdownTimer');
-            timerEl.textContent = formatTime(remainingSeconds);
-        }
-
-        // Update flag indicator styling and text
-        function updateFlagDisplay(mode) {
-            currentMode = mode;
-            const flagEl = document.getElementById('flagIndicator');
-            // Remove existing flag classes
-            flagEl.classList.remove('flag-safe', 'flag-hazard', 'flag-danger', 'flag-finish');
-
-            let flagText = '';
-            switch (mode) {
-                case 'safe':
-                    flagText = '🟢 SAFE MODE - RACING';
-                    flagEl.classList.add('flag-safe');
-                    break;
-                case 'hazard':
-                    flagText = '🟡 HAZARD - CAUTION';
-                    flagEl.classList.add('flag-hazard');
-                    break;
-                case 'danger':
-                    flagText = '🔴 DANGER - STOP';
-                    flagEl.classList.add('flag-danger');
-                    break;
-                case 'finish':
-                    flagText = '🏁 FINISH - RETURN TO PITS';
-                    flagEl.classList.add('flag-finish');
-                    break;
-                default:
-                    flagText = '⚫ NO FLAG';
-            }
-            flagEl.textContent = flagText;
-        }
-
-        // Render the driver leaderboard (car #, name, fastest lap, current lap)
-        function renderDrivers(drivers) {
-            const container = document.getElementById('driversList');
-            if (!drivers || drivers.length === 0) {
-                container.innerHTML = '<div class="empty-message">No drivers assigned to this session</div>';
-                return;
-            }
-
-            // Sort by fastest lap (ascending), with nulls at the bottom
-            const sorted = [...drivers].sort((a, b) => {
-                if (!a.fastestLap && !b.fastestLap) return 0;
-                if (!a.fastestLap) return 1;
-                if (!b.fastestLap) return -1;
-                return a.fastestLap - b.fastestLap;
-            });
-
-            const tableHtml = `
-                <table class="driver-table">
-                    <thead>
-                        <tr><th>Pos</th><th>Car #</th><th>Driver</th><th>Fastest Lap</th><th>Current Lap</th></tr>
-                    </thead>
-                    <tbody>
-                        ${sorted.map((driver, idx) => `
-                            <tr>
-                                <td>${idx + 1}</td>
-                                <td class="car-number-cell">#${driver.carNumber}</td>
-                                <td>${escapeHtml(driver.name)}</td>
-                                <td class="fastest-lap">${driver.fastestLap ? driver.fastestLap.toFixed(3) + 's' : '—'}</td>
-                                <td class="current-lap">${driver.currentLap || 1}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-            container.innerHTML = tableHtml;
-        }
-
-        // Simple escape to avoid XSS
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>]/g, function (m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
-        }
-
-        // Update status message and related UI based on race state
-        function updateRaceStatusMessage(active, ended, mode, raceName = '') {
-            const statusEl = document.getElementById('raceStatus');
-            const raceInfoEl = document.getElementById('raceInfoDetail');
-
-            if (ended) {
-                statusEl.innerHTML = '🏁 SESSION ENDED';
-                raceInfoEl.innerHTML = 'Race session completed. Next race will be shown soon.';
-                currentRaceActive = false;
-                raceFinishedFlag = true;
-            }
-            else if (mode === 'finish') {
-                statusEl.innerHTML = '🏁 RACE FINISHED - RETURN TO PITS';
-                raceInfoEl.innerHTML = raceName ? `Race: ${escapeHtml(raceName)}` : '';
-                currentRaceActive = false;
-                raceFinishedFlag = true;
-            }
-            else if (active && mode !== 'danger' && mode !== 'finish') {
-                statusEl.innerHTML = '🏎️ RACE IN PROGRESS 🏎️';
-                raceInfoEl.innerHTML = raceName ? `Active session: ${escapeHtml(raceName)}` : '';
-                currentRaceActive = true;
-                raceFinishedFlag = false;
-            }
-            else if (mode === 'danger' && !active && !ended) {
-                statusEl.innerHTML = '⚠️ DANGER MODE - RACE STOPPED';
-                raceInfoEl.innerHTML = raceName ? `Session: ${escapeHtml(raceName)}` : 'Race control has stopped the session';
-                currentRaceActive = false;
-            }
-            else {
-                statusEl.innerHTML = '⏳ READY FOR NEXT RACE';
-                raceInfoEl.innerHTML = raceName ? `Upcoming: ${escapeHtml(raceName)}` : 'Waiting for race configuration';
-                currentRaceActive = false;
-            }
-        }
-
-        // ---- Socket event listeners ----
-        socket.on('timer-update', (data) => {
-            if (data && typeof data.remaining === 'number') {
-                updateTimerDisplay(data.remaining);
-            }
         });
 
-        socket.on('race-mode-changed', (data) => {
-            if (data && data.mode) {
-                updateFlagDisplay(data.mode);
-                // Also update overall race status message using current known state
-                updateRaceStatusMessage(currentRaceActive, raceFinishedFlag, data.mode, window.currentRaceName);
-            }
-        });
-
-        socket.on('race-started', (race) => {
-            if (race) {
-                window.currentRaceName = race.name;
-                currentRaceActive = true;
-                raceFinishedFlag = false;
-                updateRaceStatusMessage(true, false, 'safe', race.name);
-                updateFlagDisplay('safe');
-                if (race.drivers) {
-                    renderDrivers(race.drivers);
-                }
-                // Timer will be updated via 'timer-update' events
-            }
-        });
-
-        socket.on('race-finished', () => {
-            // Race has entered finish mode (chequered flag)
-            raceFinishedFlag = true;
-            currentRaceActive = false;
-            updateRaceStatusMessage(false, false, 'finish', window.currentRaceName);
-            // Keep flag display as finish already set by race-mode-changed
-        });
-
-        socket.on('session-ended', () => {
-            raceFinishedFlag = true;
-            currentRaceActive = false;
-            updateRaceStatusMessage(false, true, 'danger', window.currentRaceName);
-            // Optionally clear timer display
-            updateTimerDisplay(0);
-        });
-
-        socket.on('leaderboard-update', (drivers) => {
-            if (drivers && drivers.length) {
-                renderDrivers(drivers);
-                // Also update currentRaceName if available from race object (optional)
-                if (!window.currentRaceName && drivers[0] && drivers[0].sessionName) {
-                    window.currentRaceName = drivers[0].sessionName;
-                }
-            }
-        });
-
-        socket.on('next-race-info', (race) => {
-            if (race && !currentRaceActive && !raceFinishedFlag) {
-                window.currentRaceName = race.name;
-                updateRaceStatusMessage(false, false, currentMode, race.name);
-                if (race.drivers && race.drivers.length) {
-                    renderDrivers(race.drivers);
-                } else {
-                    document.getElementById('driversList').innerHTML = '<div class="empty-message">No drivers assigned to this session</div>';
-                }
-                // If no active race, show timer as "00:00" or upcoming indication
-                if (!currentRaceActive) {
-                    updateTimerDisplay(0);
-                }
-            }
-        });
-
-        // When a new race session is created and no race is active, show its info
-        socket.on('race-sessions-updated', (sessions) => {
-            if (!currentRaceActive && sessions && sessions.length > 0) {
-                const nextRace = sessions[0];
-                window.currentRaceName = nextRace.name;
-                updateRaceStatusMessage(false, false, currentMode, nextRace.name);
-                if (nextRace.drivers) {
-                    renderDrivers(nextRace.drivers);
-                }
-            }
-        });
-
-        // Also initial state: when connected, request any current race state
-        socket.on('connect', () => {
-            // The server automatically sends leaderboard-update, timer-update, etc. on public-connect.
-            // But we can also manually ask for current status by emitting again if needed.
-            socket.emit('public-connect');
-        });
-
-        // Provide initial fallback in case events are slow
-        setTimeout(() => {
-            if (!window.hasReceivedData) {
-                // Not critical, just to show something friendly
-                const timerEl = document.getElementById('countdownTimer');
-                if (timerEl.textContent === '--:--') {
-                    timerEl.textContent = '00:00';
-                }
-            }
-        }, 2000);
-
-        // Fullscreen toggle function (same as other public displays)
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.warn(`Fullscreen error: ${err.message}`);
-                });
-            } else {
-                document.exitFullscreen();
-            }
-        }
-
-        // Mark that data was received
-        window.hasReceivedData = false;
-        const originalRender = renderDrivers;
-        window.renderDrivers = function (drivers) {
-            window.hasReceivedData = true;
-            originalRender(drivers);
-        };
-        renderDrivers = window.renderDrivers;
     </script>
+
 </body>
 
 </html>

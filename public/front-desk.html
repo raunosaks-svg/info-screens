@@ -1,314 +1,188 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="et">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Front Desk - Beachside Racetrack</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Front Desk</title>
     <style>
-        .driver-editor {
-            margin: 15px 0;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.5);
+        body {
+            background: #050a18;
+            color: white;
+            font-family: sans-serif;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .login-box {
+            background: #0d1117;
+            padding: 30px;
             border-radius: 8px;
+            border: 1px solid #30363d;
+            display: inline-block;
         }
 
-        .driver-list {
-            list-style: none;
-            padding: 0;
+        input {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+            color: white;
+            margin-right: 5px;
         }
 
-        .driver-list li {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
-            padding: 5px;
-            background: rgba(255, 255, 255, 0.7);
+        button {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            border: none;
+            background: #f0f6fc;
+            color: black;
+            font-weight: bold;
+        }
+
+        .ui-hidden {
+            display: none;
+        }
+
+        /* See osa vastutab selle eest, et lisatud draiverid oleks näha */
+        #temp-list {
+            margin: 20px auto;
+            max-width: 400px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
             border-radius: 5px;
+            min-height: 20px;
         }
 
-        .driver-name-input {
-            flex: 1;
-            padding: 6px 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        .temp-item {
+            border-bottom: 1px solid #222;
+            padding: 5px;
+            display: flex;
+            justify-content: space-between;
         }
 
-        .remove-driver-btn {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 4px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .add-driver-btn {
-            background: #22c55e;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 5px;
-        }
-
-        .driver-error {
-            color: #ef4444;
-            font-size: 12px;
-            margin-top: 5px;
-        }
-
-        .session-card.editing {
-            border: 2px solid var(--accent);
+        .session-card {
+            background: #161b22;
+            margin: 10px auto;
+            padding: 15px;
+            border-radius: 5px;
+            width: fit-content;
+            min-width: 300px;
         }
     </style>
 </head>
 
 <body>
-    <div class="container front-desk-container">
-        <div id="auth-screen" class="auth-screen">
-            <h1>🏁 Beachside Racetrack</h1>
-            <h2>Front Desk Access</h2>
-            <input type="password" id="access-key" placeholder="Enter access key" class="key-input">
-            <button onclick="authenticate()" class="btn btn-primary">Access Front Desk</button>
-            <div id="auth-error" class="error-message"></div>
+
+    <div id="auth" class="login-box">
+        <h1>Front Desk Login</h1>
+        <input type="password" id="key" placeholder="••••">
+        <button onclick="doLogin()">Enter</button>
+        <p id="msg" style="color: #f85149;"></p>
+    </div>
+
+    <div id="main" class="ui-hidden">
+        <h1>Front Desk</h1>
+
+        <div style="margin-bottom: 20px;">
+            <input type="text" id="name" placeholder="Sõitja nimi">
+            <input type="number" id="car" placeholder="Auto #" style="width: 70px;">
+            <button onclick="addDriver()">Add Driver</button>
+            <button onclick="submitSession()" style="background: #238636; color: white;">Create Session</button>
         </div>
 
-        <div id="main-screen" class="main-screen hidden">
-            <div class="nav-bar">
-                <div class="nav-title">🏁 Front Desk - Race Configuration</div>
-                <div class="nav-buttons">
-                    <button onclick="goBack()" class="nav-btn nav-btn-back">← Back to Main</button>
-                    <button class="nav-btn nav-btn-prev" disabled style="opacity: 0.5;">—</button>
-                    <a href="/race-control" class="nav-btn nav-btn-next">Race Control →</a>
-                </div>
-            </div>
-
-            <div class="create-session-form">
-                <h2>➕ Create New Race Session</h2>
-                <form id="create-session-form">
-                    <div class="form-group">
-                        <label for="session-name">Session Name</label>
-                        <input type="text" id="session-name" placeholder="e.g., Morning Qualifying" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Initial Drivers (optional)</label>
-                        <textarea id="driver-names"
-                            placeholder="Enter driver names separated by commas (max 8)"></textarea>
-                        <div class="hint-text">You can add/edit drivers individually after creation.</div>
-                    </div>
-                    <button type="submit" class="create-session-btn">✨ Create Session</button>
-                </form>
-            </div>
-
-            <div class="sessions-header">
-                <h2>📋 Upcoming Race Sessions</h2>
-                <span id="session-count" class="session-count">0</span>
-            </div>
-            <div id="sessions-list" class="sessions-list"></div>
+        <div id="temp-list">
+            <em style="color: #555;">Draiverite nimekiri on tühi...</em>
         </div>
+
+        <hr style="border: 0; border-top: 1px solid #333; margin: 40px 0;">
+
+        <h2>Aktiivsed Sessioonid</h2>
+        <div id="session-list"></div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        let socket;
-        let currentSessions = [];
+        const socket = io();
+        let currentDrivers = []; // Massiiv, mis hoiab draivereid ENNE serverisse saatmist
 
-        function authenticate() {
-            const key = document.getElementById('access-key').value;
-            socket = io();
-            socket.emit('authenticate', { role: 'receptionist', key });
-            socket.on('authenticated', (response) => {
-                if (response.success) {
-                    document.getElementById('auth-screen').classList.add('hidden');
-                    document.getElementById('main-screen').classList.remove('hidden');
-                    setupFrontDesk();
-                } else {
-                    document.getElementById('auth-error').textContent = response.error;
-                }
-            });
+        // Sisselogimine
+        function doLogin() {
+            const pass = document.getElementById("key").value;
+            socket.emit("login", { roleType: "frontdesk", key: pass });
         }
 
-        function setupFrontDesk() {
-            const form = document.getElementById('create-session-form');
-            socket.on('race-sessions', (sessions) => {
-                currentSessions = sessions || [];
-                displaySessions(currentSessions);
-            });
-            socket.on('race-sessions-updated', (sessions) => {
-                currentSessions = sessions || [];
-                displaySessions(currentSessions);
-            });
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const name = document.getElementById('session-name').value.trim();
-                const driverNamesInput = document.getElementById('driver-names').value.trim();
-                if (!name) { alert('Session name is required'); return; }
-                let drivers = [];
-                if (driverNamesInput) {
-                    drivers = driverNamesInput.split(',').map(n => n.trim()).filter(n => n.length > 0).slice(0, 8).map(name => ({ name, id: Date.now() + Math.random() }));
-                }
-                socket.emit('create-race-session', { name: name, time: new Date().toLocaleTimeString(), drivers: drivers });
-                form.reset();
-                showNotification(`Session "${name}" created`, 'success');
-            });
+        socket.on("authSuccess", () => {
+            document.getElementById("auth").classList.add("ui-hidden");
+            document.getElementById("main").classList.remove("ui-hidden");
+        });
+
+        socket.on("authError", (m) => document.getElementById("msg").innerText = m);
+
+        // FUNKTSIOON: Lisab draiveri nimekirja ja uuendab visuaali kohe
+        function addDriver() {
+            const nInput = document.getElementById("name");
+            const cInput = document.getElementById("car");
+
+            if (nInput.value && cInput.value) {
+                // Lisame andmed massiivi
+                currentDrivers.push({ name: nInput.value, car: cInput.value });
+
+                // Tühjendame kastid
+                nInput.value = "";
+                cInput.value = "";
+
+                // Jookseme nimekirja uuesti üle, et see ekraanile ilmuks
+                renderTempList();
+            } else {
+                alert("Täida mõlemad väljad!");
+            }
         }
 
-        function displaySessions(sessions) {
-            const sessionsList = document.getElementById('sessions-list');
-            const sessionCount = document.getElementById('session-count');
-            sessionCount.textContent = sessions.length;
-            if (sessions.length === 0) {
-                sessionsList.innerHTML = `<div class="empty-state">No race sessions created yet.<br>Use the form above to create your first session.</div>`;
+        // FUNKTSIOON: See joonistab "Add Driver" nimed ekraanile
+        function renderTempList() {
+            const listDiv = document.getElementById("temp-list");
+            if (currentDrivers.length === 0) {
+                listDiv.innerHTML = '<em style="color: #555;">Draiverite nimekiri on tühi...</em>';
                 return;
             }
-            sessionsList.innerHTML = sessions.map(session => `
-                <div class="session-card" data-session-id="${session.id}">
-                    <div class="session-header">
-                        <input type="text" class="session-name-input" value="${escapeHtml(session.name)}" style="font-size:1.2rem; font-weight:bold; border:1px solid #ccc; padding:5px;">
-                        <span class="session-time">🕐 ${session.time}</span>
-                    </div>
-                    <div class="driver-editor" data-session-id="${session.id}">
-                        <ul class="driver-list" id="driver-list-${session.id}"></ul>
-                        <div class="add-driver">
-                            <input type="text" placeholder="New driver name" id="new-driver-name-${session.id}" class="driver-name-input" style="width: auto; display: inline-block;">
-                            <button onclick="addDriver('${session.id}')" class="add-driver-btn">+ Add Driver</button>
-                        </div>
-                        <div id="error-${session.id}" class="driver-error"></div>
-                    </div>
-                    <div class="session-actions">
-                        <button onclick="saveSession('${session.id}')" class="btn btn-success">💾 Save Changes</button>
-                        <button onclick="deleteSession('${session.id}')" class="btn btn-danger">🗑️ Delete Session</button>
-                    </div>
+
+            listDiv.innerHTML = currentDrivers.map((d, index) => `
+                <div class="temp-item">
+                    <span>${d.name} (#${d.car})</span>
+                    <span style="color: red; cursor: pointer;" onclick="removeTemp(${index})">Eemalda</span>
                 </div>
-            `).join('');
-            // Populate driver lists after rendering
-            sessions.forEach(session => {
-                renderDriverList(session.id, session.drivers);
-            });
+            `).join("");
         }
 
-        function renderDriverList(sessionId, drivers) {
-            const listEl = document.getElementById(`driver-list-${sessionId}`);
-            if (!listEl) return;
-            listEl.innerHTML = drivers.map((driver, idx) => `
-                <li>
-                    <input type="text" class="driver-name-input" value="${escapeHtml(driver.name)}" data-driver-id="${driver.id}" data-session-id="${sessionId}" style="flex:1;">
-                    <button onclick="removeDriver('${sessionId}', '${driver.id}')" class="remove-driver-btn">✖</button>
-                </li>
-            `).join('');
-            // Attach change listeners to each driver name input
-            document.querySelectorAll(`#driver-list-${sessionId} input.driver-name-input`).forEach(input => {
-                input.addEventListener('change', (e) => {
-                    const driverId = input.getAttribute('data-driver-id');
-                    const newName = input.value.trim();
-                    if (newName) {
-                        updateDriverName(sessionId, driverId, newName);
-                    }
-                });
-            });
+        function removeTemp(index) {
+            currentDrivers.splice(index, 1);
+            renderTempList();
         }
 
-        function updateDriverName(sessionId, driverId, newName) {
-            const session = currentSessions.find(s => s.id === sessionId);
-            if (!session) return;
-            const driver = session.drivers.find(d => d.id === driverId);
-            if (!driver) return;
-            // Check uniqueness within this session (excluding this driver)
-            const isDuplicate = session.drivers.some(d => d.id !== driverId && d.name.toLowerCase() === newName.toLowerCase());
-            if (isDuplicate) {
-                showError(sessionId, `Driver name "${newName}" already exists in this session.`);
-                // revert input to old name
-                const input = document.querySelector(`input[data-driver-id="${driverId}"]`);
-                if (input) input.value = driver.name;
-                return;
-            }
-            driver.name = newName;
-            clearError(sessionId);
-            // Auto-save after change
-            saveSession(sessionId);
-        }
-
-        function addDriver(sessionId) {
-            const input = document.getElementById(`new-driver-name-${sessionId}`);
-            const newName = input.value.trim();
-            if (!newName) return;
-            const session = currentSessions.find(s => s.id === sessionId);
-            if (!session) return;
-            if (session.drivers.length >= 8) {
-                showError(sessionId, 'Maximum 8 drivers per session.');
-                return;
-            }
-            const isDuplicate = session.drivers.some(d => d.name.toLowerCase() === newName.toLowerCase());
-            if (isDuplicate) {
-                showError(sessionId, `Driver name "${newName}" already exists.`);
-                return;
-            }
-            const newDriver = { name: newName, id: Date.now() + Math.random() };
-            session.drivers.push(newDriver);
-            renderDriverList(sessionId, session.drivers);
-            input.value = '';
-            clearError(sessionId);
-            saveSession(sessionId);
-        }
-
-        function removeDriver(sessionId, driverId) {
-            const session = currentSessions.find(s => s.id === sessionId);
-            if (!session) return;
-            session.drivers = session.drivers.filter(d => d.id !== driverId);
-            renderDriverList(sessionId, session.drivers);
-            saveSession(sessionId);
-        }
-
-        function saveSession(sessionId) {
-            const session = currentSessions.find(s => s.id === sessionId);
-            if (!session) return;
-            // Get updated session name from input field
-            const nameInput = document.querySelector(`.session-card[data-session-id="${sessionId}"] .session-name-input`);
-            if (nameInput) session.name = nameInput.value.trim();
-            // Ensure drivers have unique names (already enforced during edits)
-            socket.emit('update-race-session', { sessionId, name: session.name, drivers: session.drivers });
-            showNotification('Session saved', 'success');
-        }
-
-        function deleteSession(sessionId) {
-            if (confirm('Delete this race session?')) {
-                socket.emit('delete-race-session', sessionId);
-                showNotification('Session deleted', 'info');
+        // Saada terve sessioon serverisse
+        function submitSession() {
+            if (currentDrivers.length > 0) {
+                socket.emit("addSession", currentDrivers);
+                currentDrivers = []; // Puhastame nimekirja
+                renderTempList();
+            } else {
+                alert("Lisa vähemalt üks sõitja!");
             }
         }
 
-        function showError(sessionId, message) {
-            const errorDiv = document.getElementById(`error-${sessionId}`);
-            if (errorDiv) errorDiv.textContent = message;
-        }
-
-        function clearError(sessionId) {
-            const errorDiv = document.getElementById(`error-${sessionId}`);
-            if (errorDiv) errorDiv.textContent = '';
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>]/g, function (m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
-        }
-
-        function goBack() { window.location.href = '/'; }
-        function showNotification(message, type) {
-            const notif = document.createElement('div');
-            notif.className = `notification notification-${type}`;
-            notif.textContent = message;
-            document.body.appendChild(notif);
-            setTimeout(() => notif.remove(), 3000);
-        }
+        // Kui serverist tulevad uuendused sessioonide kohta
+        socket.on("state", (s) => {
+            const sList = document.getElementById("session-list");
+            sList.innerHTML = s.sessions.map((sess, i) => `
+                <div class="session-card">
+                    <strong>Sessioon #${i + 1}:</strong> 
+                    ${sess.drivers.map(d => `${d.name} (#${d.car})`).join(", ")}
+                    <button style="margin-left: 15px; background: #da3633; color: white; padding: 2px 5px;" 
+                            onclick="socket.emit('deleteSession', ${i})">Delete</button>
+                </div>
+            `).join("");
+        });
     </script>
 </body>
 

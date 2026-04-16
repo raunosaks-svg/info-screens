@@ -1,90 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leader Board - Beachside Racetrack</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Leaderboard</title>
+    <style>
+        body {
+            background: black;
+            color: white;
+            font-family: sans-serif;
+            text-align: center;
+        }
+
+        table {
+            width: 90%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+
+        th {
+            border-bottom: 1px solid #333;
+            padding: 10px;
+            color: #888;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #222;
+            font-size: 1.2rem;
+        }
+
+        .mode-info {
+            margin: 10px;
+            color: #ccc;
+        }
+    </style>
 </head>
+
 <body>
-    <div class="public-display">
-        <button onclick="toggleFullscreen()" class="fullscreen-btn">⛶ Fullscreen</button>
-        
-        <div class="leaderboard-container">
-            <div class="race-info">
-                <div class="timer-display">
-                    <div id="timer" class="large-timer">10:00</div>
-                </div>
-                <div id="flag-status" class="flag-status">⚫ Ready</div>
-            </div>
-            
-            <table class="leaderboard-table">
-                <thead>
-                    <tr>
-                        <th>Position</th>
-                        <th>Car #</th>
-                        <th>Driver</th>
-                        <th>Fastest Lap</th>
-                        <th>Current Lap</th>
-                    </tr>
-                </thead>
-                <tbody id="leaderboard-body"></tbody>
-            </table>
-        </div>
-    </div>
-    
+    <h1>🏆 Leaderboard</h1>
+    <div id="info" class="mode-info">Mode: - | Time: -</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Driver</th>
+                <th>Car</th>
+                <th>Lap</th>
+                <th>Fastest</th>
+            </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+    </table>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        socket.emit('public-connect');
-        
-        socket.on('leaderboard-update', (drivers) => {
-            updateLeaderboard(drivers);
-        });
-        
-        socket.on('timer-update', (timer) => {
-            const minutes = Math.floor(timer.remaining / 60);
-            const seconds = timer.remaining % 60;
-            document.getElementById('timer').textContent = 
-                `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        });
-        
-        socket.on('race-mode-changed', (data) => {
-            const flagStatus = document.getElementById('flag-status');
-            const modeText = {
-                'safe': '🟢 Safe - Racing',
-                'hazard': '🟡 Hazard - Caution',
-                'danger': '🔴 Danger - Stopped',
-                'finish': '🏁 Finish - Return to Pits'
-            };
-            flagStatus.textContent = modeText[data.mode] || '⚫ Ready';
-        });
-        
-        socket.on('race-started', (race) => {
-            updateLeaderboard(race.drivers);
-        });
-        
-        function updateLeaderboard(drivers) {
-            const tbody = document.getElementById('leaderboard-body');
-            
-            tbody.innerHTML = drivers.map((driver, index) => `
+        socket.on("state", (s) => {
+            document.getElementById("info").innerText = `Mode: ${s.raceMode} | Time: ${s.timer}`;
+            if (!s.currentRace) return;
+            const sorted = [...s.currentRace.drivers].sort((a, b) => (a.fastestLap || 999) - (b.fastestLap || 999));
+            document.getElementById("rows").innerHTML = sorted.map(d => `
                 <tr>
-                    <td class="position">${index + 1}</td>
-                    <td class="car-number">#${driver.carNumber}</td>
-                    <td class="driver-name">${driver.name}</td>
-                    <td class="lap-time">${driver.fastestLap ? driver.fastestLap.toFixed(3) + 's' : '--'}</td>
-                    <td class="current-lap">L${driver.currentLap || 0}</td>
+                    <td>${d.name}</td>
+                    <td>${d.car}</td>
+                    <td>${d.laps}</td>
+                    <td>${d.fastestLap ? d.fastestLap.toFixed(3) : '-'}</td>
                 </tr>
-            `).join('');
-        }
-        
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen();
-            } else {
-                document.exitFullscreen();
-            }
-        }
+            `).join("");
+        });
     </script>
 </body>
+
 </html>

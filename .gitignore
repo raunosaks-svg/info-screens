@@ -1,2 +1,12 @@
-node_modules
+# Dependency directories
+node_modules/
+
+# Environment variables (TÄHTIS: hoiab su paroolid turvalisena)
 .env
+
+# Local data files
+data.json
+
+# System files
+.DS_Store
+Thumbs.db

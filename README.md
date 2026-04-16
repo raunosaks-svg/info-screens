@@ -1,42 +1,74 @@
-# 🏁 Beachside Racetrack - Startup Guide
+#  Race Management System
 
-## 1. Install dependencies
+##  Käivitamine
+
+1. Paigalda sõltuvused:
 npm install
 
+2. Loo .env fail:
+FRONTDESK_KEY=1234
+RACECONTROL_KEY=1234
+LAPTRACKER_KEY=1234
 
-## 2. Set access keys
-
-**Mac / Linux:**
-export receptionist_key=1111
-export observer_key=2222
-export safety_key=3333
-
-
-**Windows (Command Prompt):**
-set receptionist_key=1111
-set observer_key=2222
-set safety_key=3333
-
-
-
-## 3. Start the server
-
-**Production mode (10 min races):**
+3. Käivita server:
 npm start
 
+4. Ava browseris:
+http://localhost:3000/front-desk
 
-**Development mode (1 min races):**
-npm run dev
+---
 
+##  Kasutajad
 
-## 4. Open in browser
-http://localhost:3000
+###  Receptionist (Front Desk)
+- Lisab race sessioneid
+- Kustutab sessioneid
+- Lisab drivereid ja autosid
 
+###  Safety Official (Race Control)
+- Käivitab race
+- Muudab race mode:
+  - Safe (green)
+  - Hazard (yellow)
+  - Danger (red)
+  - Finish (checkered)
+- Lõpetab race
 
-## 🔑 Login credentials
+###  Lap-line Observer
+- Vajutab nuppu kui auto lõpetab ringi
 
-| Interface | Access Key |
-|-----------|------------|
-| Front Desk | 1111 |
-| Lap-line Tracker | 2222 |
-| Race Control | 3333 |
+###  Guest (Leaderboard)
+- Näeb tulemusi reaalajas
+
+---
+
+##  Ekraanid
+
+- /front-desk
+- /race-control
+- /lap-line-tracker
+- /leader-board
+- /next-race
+- /race-countdown
+- /race-flags
+
+---
+
+##  Funktsionaalsus
+
+- Reaalajas andmed (Socket.IO)
+- Leaderboard sorteeritud fastest lap järgi
+- Countdown timer
+- Race flags
+- Session management
+- State salvestamine (server restart ei kaota andmeid)
+- Access control (koodidega)
+
+---
+
+##  Võrk
+
+Server töötab:
+http://[SINU-IP]:3000
+
+Saab avada telefonist samas WiFis

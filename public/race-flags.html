@@ -1,98 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="et">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Race Flags - Beachside Racetrack</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Race Flags</title>
     <style>
-        body {
+        body,
+        html {
             margin: 0;
             padding: 0;
             overflow: hidden;
+            background: black;
         }
-        
-        .flag-display {
+
+        #flag {
             width: 100vw;
             height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color 0.3s;
         }
-        
-        .flag-green {
-            background: linear-gradient(135deg, #00ff00 0%, #008000 100%);
+
+        .chequered {
+            background-color: white;
+            background-image: linear-gradient(45deg, black 25%, transparent 25%, transparent 75%, black 75%, black),
+                linear-gradient(45deg, black 25%, transparent 25%, transparent 75%, black 75%, black);
+            background-size: 100px 100px;
+            background-position: 0 0, 50px 50px;
         }
-        
-        .flag-yellow {
-            background: linear-gradient(135deg, #ffff00 0%, #ff8c00 100%);
-        }
-        
-        .flag-red {
-            background: linear-gradient(135deg, #ff0000 0%, #8b0000 100%);
-        }
-        
-        .flag-checkered {
-            background: repeating-linear-gradient(
-                45deg,
-                #000 0px,
-                #000 50px,
-                #fff 50px,
-                #fff 100px
-            );
-        }
-        
-        .flag-text {
-            font-size: 8em;
-            font-weight: bold;
-            text-shadow: 4px 4px 8px rgba(0,0,0,0.5);
-            color: white;
-            text-align: center;
-        }
-        
-        .flag-checkered .flag-text {
-            color: black;
-            text-shadow: 4px 4px 8px rgba(255,255,255,0.5);
-            background: rgba(255,255,255,0.8);
-            padding: 20px;
-            border-radius: 10px;
+
+        #fs-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            padding: 10px;
+            cursor: pointer;
         }
     </style>
 </head>
+
 <body>
-    <div id="flag-display" class="flag-display flag-red">
-        <div class="flag-text">STOP</div>
-    </div>
-    
+    <button id="fs-btn" onclick="document.documentElement.requestFullscreen()">Fullscreen</button>
+    <div id="flag"></div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        socket.emit('public-connect');
-        
-        const flagDisplay = document.getElementById('flag-display');
-        const flagText = document.querySelector('.flag-text');
-        
-        const modeConfig = {
-            'safe': { class: 'flag-green', text: 'GO' },
-            'hazard': { class: 'flag-yellow', text: 'CAUTION' },
-            'danger': { class: 'flag-red', text: 'STOP' },
-            'finish': { class: 'flag-checkered', text: 'FINISH' }
-        };
-        
-        socket.on('race-mode-changed', (data) => {
-            const config = modeConfig[data.mode] || modeConfig.danger;
-            
-            flagDisplay.className = 'flag-display ' + config.class;
-            flagText.textContent = config.text;
-        });
-        
-        // Fullscreen on load for flag displays
-        window.addEventListener('load', () => {
-            if (document.documentElement.requestFullscreen) {
-                document.documentElement.requestFullscreen();
-            }
+        const flagDiv = document.getElementById("flag");
+        socket.on("state", (state) => {
+            flagDiv.className = "";
+            flagDiv.style.background = "";
+            if (state.raceMode === "safe") flagDiv.style.background = "green";
+            else if (state.raceMode === "hazard") flagDiv.style.background = "yellow";
+            else if (state.raceMode === "danger") flagDiv.style.background = "red";
+            else if (state.raceMode === "finish") flagDiv.className = "chequered";
         });
     </script>
 </body>
+
 </html>
