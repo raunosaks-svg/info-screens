@@ -129,7 +129,7 @@ io.on('connection', (socket) => {
 
     socket.on('authenticate', ({ role, key }) => {
         let validKey = false;
-        switch(role) {
+        switch (role) {
             case 'receptionist': validKey = key === RECEPTIONIST_KEY; break;
             case 'observer': validKey = key === OBSERVER_KEY; break;
             case 'safety': validKey = key === SAFETY_KEY; break;
@@ -174,6 +174,12 @@ io.on('connection', (socket) => {
             return;
         }
         const drivers = (sessionData.drivers || []).slice(0, 8);
+        const names = drivers.map(d => d.name.trim().toLowerCase());
+        const hasDuplicates = names.some((n, ind) => names.indexOf(n) !== ind);
+        if (hasDuplicates) {
+            socket.emit('error', { message: 'Driver names must be unique within a session' });
+            return;
+        }
         const session = {
             id: generateId(),
             name: sessionData.name.trim(),
@@ -193,6 +199,12 @@ io.on('connection', (socket) => {
         if (session) {
             if (name && name.trim()) session.name = name.trim();
             if (drivers) {
+                const names = drivers.map(d => d.name.trim().toLowerCase());
+                const hasDuplicates = names.some((n, ind) => names.indexOf(n) !== ind);
+                if (hasDuplicates) {
+                    socket.emit('error', { message: 'Driver names must be unique within a session' });
+                    return;
+                }
                 const limitedDrivers = drivers.slice(0, 8);
                 session.drivers = assignCarsToDrivers(limitedDrivers);
             }
