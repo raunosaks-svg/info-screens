@@ -42,8 +42,10 @@ function generateId() {
 }
 
 function assignCarsToDrivers(drivers) {
-    // Simple assignment: assign cars 1-8 in order
-    return drivers.map((driver, index) => ({
+    // Limit to maximum 8 drivers
+    const limitedDrivers = drivers.slice(0, 8);
+    // Assign car numbers sequentially
+    return limitedDrivers.map((driver, index) => ({
         ...driver,
         carNumber: index + 1,
         laps: [],
@@ -61,16 +63,16 @@ function calculateLapTime(driver) {
 
 function startRaceTimer() {
     if (raceTimer) clearInterval(raceTimer);
-    
+
     raceTimer = setInterval(() => {
         if (raceTimeRemaining > 0 && raceActive) {
             raceTimeRemaining--;
-            
+
             io.emit('timer-update', {
                 remaining: raceTimeRemaining,
                 total: RACE_DURATION
             });
-            
+
             if (raceTimeRemaining === 0) {
                 finishRace();
             }
@@ -83,7 +85,7 @@ function finishRace() {
         raceMode = 'finish';
         raceActive = false;
         clearInterval(raceTimer);
-        
+
         io.emit('race-mode-changed', { mode: raceMode });
         io.emit('race-finished');
     }
@@ -94,22 +96,22 @@ function endRaceSession() {
         currentRace.completed = true;
         currentRace.endTime = new Date();
     }
-    
+
     raceMode = 'danger';
     raceActive = false;
     raceEnded = true;
     clearInterval(raceTimer);
-    
+
     io.emit('race-mode-changed', { mode: raceMode });
     io.emit('session-ended');
-    
+
     // Move to next race
     if (currentRaceIndex < raceSessions.length - 1) {
         currentRaceIndex++;
         currentRace = raceSessions[currentRaceIndex];
         raceTimeRemaining = RACE_DURATION;
         raceEnded = false;
-        
+
         io.emit('next-race-ready', currentRace);
     }
 }
@@ -117,12 +119,12 @@ function endRaceSession() {
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
-    
+
     // Authentication
     socket.on('authenticate', ({ role, key }) => {
         let validKey = false;
-        
-        switch(role) {
+
+        switch (role) {
             case 'receptionist':
                 validKey = key === RECEPTIONIST_KEY;
                 break;
@@ -133,13 +135,13 @@ io.on('connection', (socket) => {
                 validKey = key === SAFETY_KEY;
                 break;
         }
-        
+
         setTimeout(() => {
             if (validKey) {
                 socket.authenticated = true;
                 socket.role = role;
                 socket.emit('authenticated', { success: true });
-                
+
                 // Send initial data based on role
                 if (role === 'receptionist') {
                     socket.emit('race-sessions', raceSessions);
@@ -159,19 +161,19 @@ io.on('connection', (socket) => {
                     });
                 }
             } else {
-                socket.emit('authenticated', { 
-                    success: false, 
-                    error: 'Invalid access key' 
+                socket.emit('authenticated', {
+                    success: false,
+                    error: 'Invalid access key'
                 });
             }
         }, 500);
     });
-    
+
     // Public connection (no auth required)
     socket.on('public-connect', () => {
         socket.authenticated = true;
         socket.role = 'public';
-        
+
         // Send current state
         if (currentRace) {
             socket.emit('leaderboard-update', currentRace.drivers);
@@ -183,11 +185,11 @@ io.on('connection', (socket) => {
         socket.emit('race-mode-changed', { mode: raceMode });
         socket.emit('next-race-info', currentRace || raceSessions[currentRaceIndex]);
     });
-    
+
     // Receptionist actions
     socket.on('create-race-session', (sessionData) => {
         if (!socket.authenticated || socket.role !== 'receptionist') return;
-        
+
         const session = {
             id: generateId(),
             name: sessionData.name,
@@ -195,33 +197,38 @@ io.on('connection', (socket) => {
             drivers: assignCarsToDrivers(sessionData.drivers || []),
             created: new Date()
         };
-        
+
         raceSessions.push(session);
         io.emit('race-sessions-updated', raceSessions);
     });
-    
+
     socket.on('update-race-session', ({ sessionId, drivers }) => {
         if (!socket.authenticated || socket.role !== 'receptionist') return;
-        
+
         const session = raceSessions.find(s => s.id === sessionId);
         if (session) {
-            session.drivers = assignCarsToDrivers(drivers);
+            if (name) session.name =name;
+            if (drivers) {
+                // Limit to 8 drivers
+                const limitedDrivers = drivers.slice(0, 8);
+                session.drivers = assignCarsToDrivers(limitedDrivers);
+            }
             io.emit('race-sessions-updated', raceSessions);
-            
+
             if (currentRace && currentRace.id === sessionId) {
                 currentRace.drivers = session.drivers;
                 io.emit('leaderboard-update', currentRace.drivers);
             }
         }
     });
-    
+
     socket.on('delete-race-session', (sessionId) => {
         if (!socket.authenticated || socket.role !== 'receptionist') return;
-        
+
         raceSessions = raceSessions.filter(s => s.id !== sessionId);
         io.emit('race-sessions-updated', raceSessions);
     });
-    
+
     // Safety Official actions
     socket.on('start-race', () => {
         if (!socket.authenticated || socket.role !== 'safety') return;
@@ -229,13 +236,13 @@ io.on('connection', (socket) => {
             currentRaceIndex = 0;
             currentRace = raceSessions[0];
         }
-        
+
         if (currentRace) {
             raceMode = 'safe';
             raceActive = true;
             raceEnded = false;
             raceTimeRemaining = RACE_DURATION;
-            
+
             // Initialize lap timing for all drivers
             currentRace.drivers.forEach(driver => {
                 driver.currentLap = 1;
@@ -243,16 +250,16 @@ io.on('connection', (socket) => {
                 driver.fastestLap = null;
                 driver.laps = [];
             });
-            
+
             startRaceTimer();
-            
+
             io.emit('race-started', currentRace);
             io.emit('race-mode-changed', { mode: raceMode });
             io.emit('timer-update', {
                 remaining: raceTimeRemaining,
                 total: RACE_DURATION
             });
-            
+
             // Update next race display
             const nextRace = raceSessions[currentRaceIndex + 1];
             if (nextRace) {
@@ -260,69 +267,69 @@ io.on('connection', (socket) => {
             }
         }
     });
-    
+
     socket.on('change-race-mode', (mode) => {
         if (!socket.authenticated || socket.role !== 'safety') return;
         if (raceEnded || raceMode === 'finish') return;
-        
+
         const validModes = ['safe', 'hazard', 'danger'];
         if (validModes.includes(mode)) {
             raceMode = mode;
-            
+
             if (mode === 'danger') {
                 raceActive = false;
             } else {
                 raceActive = true;
             }
-            
+
             io.emit('race-mode-changed', { mode });
         }
     });
-    
+
     socket.on('end-session', () => {
         if (!socket.authenticated || socket.role !== 'safety') return;
         if (raceMode === 'finish') {
             endRaceSession();
         }
     });
-    
+
     // Lap-line Observer actions
     socket.on('record-lap', ({ driverId, carNumber }) => {
         if (!socket.authenticated || socket.role !== 'observer') return;
         if (!currentRace || raceEnded) return;
-        
+
         const driver = currentRace.drivers.find(d => d.carNumber === carNumber);
         if (driver && driver.lapStartTime) {
             const lapTime = calculateLapTime(driver);
-            
+
             if (lapTime) {
                 driver.laps.push({
                     lapNumber: driver.currentLap,
                     time: lapTime
                 });
-                
+
                 // Update fastest lap
                 if (!driver.fastestLap || lapTime < driver.fastestLap) {
                     driver.fastestLap = lapTime;
                 }
-                
+
                 // Increment lap and reset start time
                 driver.currentLap++;
                 driver.lapStartTime = Date.now();
-                
+
                 // Sort drivers by fastest lap
                 currentRace.drivers.sort((a, b) => {
                     if (!a.fastestLap) return 1;
                     if (!b.fastestLap) return -1;
                     return a.fastestLap - b.fastestLap;
                 });
-                
+
                 io.emit('leaderboard-update', currentRace.drivers);
                 socket.emit('lap-recorded', { carNumber, lapTime });
             }
         }
     });
-    
+
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
     });
